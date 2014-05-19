@@ -14,12 +14,12 @@
             if (!this.checkSimulator()) {
                 window.plugin.email.open({
                     // TODO grab some of these values from a form on the demo page
-                    to:          ['eddyverbruggen@gmail.com'],
-                    cc:          ['eddyverbruggen@gmail.com'],
-                    bcc:         ['eddyverbruggen@gmail.com', 'eddyverbruggen@gmail.com'],
+                    to:          ['person1@domain.com'],
+                    cc:          ['person2@domain.com'],
+                    bcc:         ['person3@domain.com', 'person4@domain.com'],
                     attachments: ['www://styles/images/logo.png', 'www://styles/images/logo2x.png'],
-                    subject:     'Testing the EmailComposer plugin',
-                    body:        '<h1>Hello!</h1>This is a nice HTML email.',
+                    subject:     'EmailComposer plugin test',
+                    body:        '<h2>Hello!</h2>This is a nice <strong>HTML</strong> email with two attachments.',
                     isHtml:      true
                 }, this.callback)
             }
@@ -30,7 +30,7 @@
         },
 
         checkSimulator: function() {
-            if (window.plugins === undefined) {
+            if (window.plugin.email === undefined) {
                 alert('Plugin not available. Are you running in the simulator?');
                 return true;
             }
