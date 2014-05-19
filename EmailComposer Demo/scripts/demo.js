@@ -29,7 +29,7 @@
         },
 
         checkSimulator: function() {
-            if (window.plugin.email === undefined) {
+            if (window.plugin === undefined) {
                 alert('Plugin not available. Are you running in the simulator?');
                 return true;
             }
