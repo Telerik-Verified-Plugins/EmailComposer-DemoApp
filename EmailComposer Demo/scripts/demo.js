@@ -13,7 +13,6 @@
         composeEmail: function () {
             if (!this.checkSimulator()) {
                 window.plugin.email.open({
-                    // TODO grab some of these values from a form on the demo page
                     to:          ['person1@domain.com'],
                     cc:          ['person2@domain.com'],
                     bcc:         ['person3@domain.com', 'person4@domain.com'],
