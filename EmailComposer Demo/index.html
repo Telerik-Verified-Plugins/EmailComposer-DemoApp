@@ -30,12 +30,12 @@
         </div>
         <h3>EmailComposer Plugin Demo</h3>
         <p>
-            The EmailComposer plugin allows you to open an email draft which can be prefilled by your app.
+            The EmailComposer plugin allows you to initiate an email message draft which can be pre-filled by your app.
         </p>
         <p>
             After you've checked to make sure the device has an email app and account configured,
-            you can compose a draft, including a list of cc's, bcc's and attachments.
-            Even HTML email is supported by this plugin.
+            you can compose a draft - including a list of cc’s, bcc’s and attachments.
+            Even HTML email is supported.
         </p>
         <p>
             Custom plugins don't work in the simulator and the AppBuilder companion app,
@@ -56,7 +56,7 @@
 
             <h3 class="hassubtitle">Compose email</h3>
             <div class="subtitle">
-                Note that the success callback will be invoked when focus has given back to your app. Even if an email was not sent.
+                Note that the success callback will be invoked when focus has given back to your app (even if an email was not sent).
                 Also note that WP8 doesn't like attachments and HTML email.
             </div>
             <button data-role="button" class="button" data-bind="click: composeEmail">Compose email</button>
