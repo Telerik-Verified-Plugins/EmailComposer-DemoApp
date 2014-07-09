@@ -1,0 +1,37 @@
+{
+  "ProjectGuid": "d1f80fe4-e33b-4b07-bf0d-f677dec0dbaa",
+  "ProjectTypeGuids": "{070BCB52-5A75-4F8C-A973-144AF0EAFCC9}",
+  "AppIdentifier": "com.telerik.plugindemo.emailcomposer",
+  "ProjectName": "EmailComposer Demo",
+  "IsRunnable": "true",
+  "FrameworkVersion": "3.2.0",
+  "AndroidPermissions": [
+    "android.permission.READ_PHONE_STATE",
+    "android.permission.INTERNET",
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "android.permission.ACCESS_NETWORK_STATE"
+  ],
+  "CorePlugins": [
+    "org.apache.cordova.console",
+    "org.apache.cordova.device",
+    "org.apache.cordova.dialogs",
+    "org.apache.cordova.splashscreen",
+    "org.apache.cordova.statusbar"
+  ],
+  "DeviceOrientations": [
+    "Portrait",
+    "Landscape"
+  ],
+  "iOSStatusBarStyle": "Default",
+  "AndroidHardwareAcceleration": "false",
+  "WP8SupportedResolutions": [
+    "ID_RESOLUTION_WVGA",
+    "ID_RESOLUTION_WXGA",
+    "ID_RESOLUTION_HD720P"
+  ],
+  "BundleVersion": "1.0",
+  "Description": "EmailComposer Demo",
+  "DisplayName": "EmailComposer plugin demo",
+  "Author": "Telerik",
+  "Framework": "Cordova"
+}
