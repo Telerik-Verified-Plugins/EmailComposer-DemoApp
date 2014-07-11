@@ -4,7 +4,7 @@
   "AppIdentifier": "com.telerik.plugindemo.emailcomposer",
   "ProjectName": "EmailComposer Demo",
   "IsRunnable": "true",
-  "FrameworkVersion": "3.2.0",
+  "FrameworkVersion": "3.5.0",
   "AndroidPermissions": [
     "android.permission.READ_PHONE_STATE",
     "android.permission.INTERNET",
