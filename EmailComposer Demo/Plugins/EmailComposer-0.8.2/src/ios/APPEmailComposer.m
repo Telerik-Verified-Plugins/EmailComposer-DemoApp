@@ -1,5 +1,5 @@
 /*
- Copyright 2013-2014 appPlant UG
+ Copyright 2013-2015 appPlant UG
 
  Licensed to the Apache Software Foundation (ASF) under one
  or more contributor license agreements.  See the NOTICE file
@@ -21,47 +21,10 @@
 
 #import "APPEmailComposer.h"
 #import "Cordova/NSData+Base64.h"
+#import "Cordova/CDVAvailability.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 
-@interface APPEmailComposer (Private)
-
-// Instantiates an email composer view
-- (MFMailComposeViewController*) getDraftWithProperties:(NSDictionary*)properties;
-// Displays the email draft
-- (void) openDraft: (MFMailComposeViewController*)draft;
-// Sets the subject of the email draft
-- (void) setSubject:(NSString*)subject ofDraft:(MFMailComposeViewController*)draft;
-// Sets the body of the email draft
-- (void) setBody:(NSString*)body ofDraft:(MFMailComposeViewController*)draft isHTML:(BOOL)isHTML;
-// Sets the recipients of the email draft
-- (void) setToRecipients:(NSArray*)recipients ofDraft:(MFMailComposeViewController*)draft;
-// Sets the CC recipients of the email draft
-- (void) setCcRecipients:(NSArray*)ccRecipients ofDraft:(MFMailComposeViewController*)draft;
-// Sets the BCC recipients of the email draft
-- (void) setBccRecipients:(NSArray*)bccRecipients ofDraft:(MFMailComposeViewController*)draft;
-// Sets the attachments of the email draft
-- (void) setAttachments:(NSArray*)attatchments ofDraft:(MFMailComposeViewController*)draft;
-// Delegate will be called after the mail composer did finish an action to dismiss the view
-- (void) mailComposeController:(MFMailComposeViewController*)controller
-           didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error;
-// Retrieves the mime type from the file extension
-- (NSString*) getMimeTypeFromFileExtension:(NSString*)extension;
-// Returns the data for a given (relative) attachments path
-- (NSData*) getDataForAttachmentPath:(NSString*)path;
-// Retrieves the attachments basename.
-- (NSString*) getBasenameFromAttachmentPath:(NSString*)path;
-// Retrieves the data for an absolute attachment path
-- (NSData*) dataForAbsolutePath:(NSString*)path;
-// Retrieves the data for a resource attachment path
-- (NSData*) dataForResource:(NSString*)path;
-// Retrieves the data for a asset path
-- (NSData*) dataForAsset:(NSString*)path;
-// Retrieves the data for a base64 encoded string
-- (NSData*) dataFromBase64:(NSString*)base64String;
-// Invokes the callback without any parameter
-- (void) execCallback;
-
-@end
+#include "TargetConditionals.h"
 
 @interface APPEmailComposer ()
 
@@ -71,55 +34,93 @@
 
 @implementation APPEmailComposer
 
+#pragma mark -
+#pragma mark Plugin interface methods
+
 /**
  * Checks if the mail composer is able to send mails.
  *
  * @param callbackId
  *      The ID of the JS function to be called with the result
  */
-- (void) isServiceAvailable:(CDVInvokedUrlCommand*)command
+- (void) isAvailable:(CDVInvokedUrlCommand*)command
 {
-    bool canSendMail = [MFMailComposeViewController canSendMail];
-    CDVPluginResult* result;
+    [self.commandDelegate runInBackground:^{
+        bool canSendMail = [MFMailComposeViewController canSendMail];
+        CDVPluginResult* result;
 
-    result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-                                 messageAsBool:canSendMail];
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                     messageAsBool:canSendMail];
 
-    [self.commandDelegate sendPluginResult:result
-                                callbackId:command.callbackId];
+        [self.commandDelegate sendPluginResult:result
+                                    callbackId:command.callbackId];
+    }];
 }
 
 /**
  * Shows the email composer view with pre-filled data.
  *
- * @param {NSDictionary} properties
+ * @param properties
  *      The email properties like subject, body, attachments
  */
 - (void) open:(CDVInvokedUrlCommand*)command
 {
-    NSDictionary* properties = [command.arguments objectAtIndex:0];
-    MFMailComposeViewController* controller = [self getDraftWithProperties:
-                                               properties];
-
     _command = command;
 
-    if (!controller) {
+    if (TARGET_IPHONE_SIMULATOR && IsAtLeastiOSVersion(@"8.0")) {
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Email-Composer Plug-in"
+                                                        message:@"Plug-in cannot run on the iOS8 Simulator.\nPlease downgrade or use a physical device."
+                                                       delegate:nil
+                                              cancelButtonTitle:@"OK"
+                                              otherButtonTitles:nil];
+        [alert show];
         [self execCallback];
-
         return;
     }
 
-    [self openDraft:controller];
-    [self commandDelegate];
+    [self.commandDelegate runInBackground:^{
+        NSArray* args = command.arguments;
+        NSDictionary* properties = [args objectAtIndex:0];
+        MFMailComposeViewController* draft;
+
+        draft = [self getDraftWithProperties:properties];
+
+        if (!draft) {
+            [self execCallback];
+            return;
+        }
+
+        [self openDraft:draft];
+    }];
 }
+
+#pragma mark -
+#pragma mark MFMailComposeViewControllerDelegate methods
+
+/**
+ * Delegate will be called after the mail composer did finish an action
+ * to dismiss the view.
+ */
+- (void) mailComposeController:(MFMailComposeViewController*)controller
+           didFinishWithResult:(MFMailComposeResult)result
+                         error:(NSError*)error
+{
+    [controller dismissViewControllerAnimated:YES completion:nil];
+
+    [self execCallback];
+}
+
+#pragma mark -
+#pragma mark Plugin core methods
 
 /**
  * Instantiates an email composer view.
  *
- * @param {NSDictionary} properties
+ * @param properties
  *      The email properties like subject, body, attachments
  *
- * @return {MFMailComposeViewController}
+ * @return
+ *      The configured email composer view
  */
 - (MFMailComposeViewController*) getDraftWithProperties:(NSDictionary*)properties
 {
@@ -130,10 +131,9 @@
 
     BOOL isHTML = [[properties objectForKey:@"isHtml"] boolValue];
 
-    MFMailComposeViewController* draft = [[MFMailComposeViewController alloc]
-                                          init];
+    MFMailComposeViewController* draft;
 
-    draft.mailComposeDelegate = self;
+    draft = [[MFMailComposeViewController alloc] init];
 
     // Subject
     [self setSubject:[properties objectForKey:@"subject"] ofDraft:draft];
@@ -148,29 +148,30 @@
     // Attachments
     [self setAttachments:[properties objectForKey:@"attachments"] ofDraft:draft];
 
+    draft.mailComposeDelegate = self;
+
     return draft;
 }
 
 /**
  * Displays the email draft.
  *
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) openDraft:(MFMailComposeViewController*)draft
 {
-    [self.commandDelegate runInBackground:^{
-        [self.viewController presentViewController:draft
-                                          animated:YES completion:NULL];
-    }];
+    [self.viewController presentViewController:draft
+                                      animated:YES
+                                    completion:NULL];
 }
 
 /**
  * Sets the subject of the email draft.
  *
- * @param {NSString} subject
+ * @param subject
  *      The subject of the email
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) setSubject:(NSString*)subject
@@ -182,11 +183,11 @@
 /**
  * Sets the body of the email draft.
  *
- * @param {NSString} body
+ * @param body
  *      The body of the email
- * @param {BOOL} isHTML
+ * @param isHTML
  *      Indicates if the body is an HTML encoded string
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) setBody:(NSString*)body ofDraft:(MFMailComposeViewController*)draft
@@ -198,9 +199,9 @@
 /**
  * Sets the recipients of the email draft.
  *
- * @param {NSArray} recipients
+ * @param recipients
  *      The recipients of the email
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) setToRecipients:(NSArray*)recipients
@@ -212,9 +213,9 @@
 /**
  * Sets the CC recipients of the email draft.
  *
- * @param {NSArray} ccRecipients
+ * @param ccRecipients
  *      The CC recipients of the email
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) setCcRecipients:(NSArray*)ccRecipients
@@ -226,9 +227,9 @@
 /**
  * Sets the BCC recipients of the email draft.
  *
- * @param {NSArray} bccRecipients
+ * @param bccRecipients
  *      The BCC recipients of the email
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) setBccRecipients:(NSArray*)bccRecipients
@@ -240,9 +241,9 @@
 /**
  * Sets the attachments of the email draft.
  *
- * @param {NSArray} attachments
+ * @param attachments
  *      The attachments of the email
- * @param {MFMailComposeViewController} draft
+ * @param draft
  *      The email composer view
  */
 - (void) setAttachments:(NSArray*)attatchments
@@ -258,30 +259,181 @@
             NSString* pathExt  = [basename pathExtension];
             NSString* fileName = [basename pathComponents].lastObject;
             NSString* mimeType = [self getMimeTypeFromFileExtension:pathExt];
-
+            
+            // Couldn't find mimeType, must be some type of binary data
+            if (mimeType == nil) mimeType = @"application/octet-stream";
+            
             [draft addAttachmentData:data mimeType:mimeType fileName:fileName];
         }
     }
 }
 
 /**
- * Delegate will be called after the mail composer did finish an action
- * to dismiss the view.
+ * Returns the data for a given (relative) attachment path.
+ *
+ * @param path
+ *      An absolute/relative path or the base64 data
+ *
+ * @return
+ *      The data for the attachment
  */
-- (void) mailComposeController:(MFMailComposeViewController*)controller
-           didFinishWithResult:(MFMailComposeResult)result
-                         error:(NSError*)error
+- (NSData*) getDataForAttachmentPath:(NSString*)path
 {
-    [controller dismissViewControllerAnimated:YES completion:nil];
+    if ([path hasPrefix:@"file:///"])
+    {
+        return [self dataForAbsolutePath:path];
+    }
+    else if ([path hasPrefix:@"res:"])
+    {
+        return [self dataForResource:path];
+    }
+    else if ([path hasPrefix:@"file://"])
+    {
+        return [self dataForAsset:path];
+    }
+    else if ([path hasPrefix:@"base64:"])
+    {
+        return [self dataFromBase64:path];
+    }
 
-    [self execCallback];
+    NSFileManager* fileManager = [NSFileManager defaultManager];
+
+    if (![fileManager fileExistsAtPath:path]){
+        NSLog(@"File not found: %@", path);
+    }
+
+    return [fileManager contentsAtPath:path];
 }
+
+/**
+ * Retrieves the data for an absolute attachment path.
+ *
+ * @param path
+ *      An absolute file path
+ *
+ * @return
+ *      The data for the attachment
+ */
+- (NSData*) dataForAbsolutePath:(NSString*)path
+{
+    NSFileManager* fileManager = [NSFileManager defaultManager];
+    NSString* absPath;
+
+    absPath = [path stringByReplacingOccurrencesOfString:@"file://"
+                                              withString:@""];
+
+    if (![fileManager fileExistsAtPath:absPath]){
+        NSLog(@"File not found: %@", absPath);
+    }
+
+    NSData* data = [fileManager contentsAtPath:absPath];
+
+    return data;
+}
+
+/**
+ * Retrieves the data for a resource path.
+ *
+ * @param path
+ *      A relative file path
+ *
+ * @return
+ *      The data for the attachment
+ */
+- (NSData*) dataForResource:(NSString*)path
+{
+    NSFileManager* fileManager = [NSFileManager defaultManager];
+    NSString* absPath;
+
+    NSBundle* mainBundle = [NSBundle mainBundle];
+    NSString* bundlePath = [[mainBundle bundlePath]
+                            stringByAppendingString:@"/"];
+
+    absPath = [path pathComponents].lastObject;
+
+    absPath = [bundlePath stringByAppendingString:absPath];
+
+    if (![fileManager fileExistsAtPath:absPath]){
+        NSLog(@"File not found: %@", absPath);
+    }
+
+    NSData* data = [fileManager contentsAtPath:absPath];
+
+    return data;
+}
+
+/**
+ * Retrieves the data for a asset path.
+ *
+ * @param path
+ *      A relative www file path
+ *
+ * @return
+ *      The data for the attachment
+ */
+- (NSData*) dataForAsset:(NSString*)path
+{
+    NSFileManager* fileManager = [NSFileManager defaultManager];
+    NSString* absPath;
+
+    NSBundle* mainBundle = [NSBundle mainBundle];
+    NSString* bundlePath = [[mainBundle bundlePath]
+                            stringByAppendingString:@"/"];
+
+    absPath = [path stringByReplacingOccurrencesOfString:@"file:/"
+                                              withString:@"www"];
+
+    absPath = [bundlePath stringByAppendingString:absPath];
+
+    if (![fileManager fileExistsAtPath:absPath]){
+        NSLog(@"File not found: %@", absPath);
+    }
+
+    NSData* data = [fileManager contentsAtPath:absPath];
+
+    return data;
+}
+
+/**
+ * Retrieves the data for a base64 encoded string.
+ *
+ * @param base64String
+ *      Base64 encoded string
+ *
+ * @return
+ *      The data for the attachment
+ */
+- (NSData*) dataFromBase64:(NSString*)base64String
+{
+    NSUInteger length = [base64String length];
+    NSRegularExpression *regex;
+    NSString *dataString;
+
+    regex = [NSRegularExpression regularExpressionWithPattern:@"^base64:[^/]+.."
+                                                      options:NSRegularExpressionCaseInsensitive
+                                                        error:Nil];
+
+    dataString = [regex stringByReplacingMatchesInString:base64String
+                                                 options:0
+                                                   range:NSMakeRange(0, length)
+                                            withTemplate:@""];
+
+    NSData* data = [NSData dataFromBase64String:dataString];
+
+    return data;
+}
+
+#pragma mark -
+#pragma mark Plugin helper methods
 
 /**
  * Retrieves the mime type from the file extension.
  *
- * @param {NSString} extension
+ * @param extension
  *      The file's extension
+ *
+ * @return
+ *      The coresponding MIME type
  */
 - (NSString*) getMimeTypeFromFileExtension:(NSString*)extension
 {
@@ -300,8 +452,11 @@
 /**
  * Retrieves the attachments basename.
  *
- * @param {NSString} path
+ * @param path
  *      The file path or bas64 data of the attachment
+ *
+ * @return
+ *      The attachments basename
  */
 - (NSString*) getBasenameFromAttachmentPath:(NSString*)path
 {
@@ -318,146 +473,6 @@
 
     return path;
 
-}
-
-/**
- * Returns the data for a given (relative) attachment path.
- *
- * @param {NSString} path
- *      An absolute/relative path or the base64 data
- */
-- (NSData*) getDataForAttachmentPath:(NSString*)path
-{
-    if ([path hasPrefix:@"file://"])
-    {
-        return [self dataForAbsolutePath:path];
-    }
-    else if ([path hasPrefix:@"res://"])
-    {
-        return [self dataForResource:path];
-    }
-    else if ([path hasPrefix:@"www://"])
-    {
-        return [self dataForAsset:path];
-    }
-    else if ([path hasPrefix:@"base64:"])
-    {
-        return [self dataFromBase64:path];
-    }
-
-    NSFileManager* fileManager = [NSFileManager defaultManager];
-
-    if (![fileManager fileExistsAtPath:path]){
-        NSLog(@"Attachment path not found: %@", path);
-    }
-
-    return [fileManager contentsAtPath:path];
-}
-
-/**
- * Retrieves the data for an absolute attachment path.
- *
- * @param {NSString} path
- *      An absolute file path
- */
-- (NSData*) dataForAbsolutePath:(NSString*)path
-{
-    NSFileManager* fileManager = [NSFileManager defaultManager];
-    NSString* absPath;
-
-    absPath = [path stringByReplacingOccurrencesOfString:@"file://"
-                                              withString:@"/"];
-
-    if (![fileManager fileExistsAtPath:absPath]){
-        NSLog(@"Attachment path not found: %@", absPath);
-    }
-
-    NSData* data = [fileManager contentsAtPath:absPath];
-
-    return data;
-}
-
-/**
- * Retrieves the data for a resource path.
- *
- * @param {NSString} path
- *      A relative file path
- */
-- (NSData*) dataForResource:(NSString*)path
-{
-    NSFileManager* fileManager = [NSFileManager defaultManager];
-    NSString* absPath;
-
-    NSBundle* mainBundle = [NSBundle mainBundle];
-    NSString* bundlePath = [[mainBundle bundlePath]
-                            stringByAppendingString:@"/"];
-
-    absPath = [path pathComponents].lastObject;
-
-    absPath = [bundlePath stringByAppendingString:absPath];
-
-    if (![fileManager fileExistsAtPath:absPath]){
-        NSLog(@"Attachment path not found: %@", absPath);
-    }
-
-    NSData* data = [fileManager contentsAtPath:absPath];
-
-    return data;
-}
-
-/**
- * Retrieves the data for a asset path.
- *
- * @param {NSString} path
- *      A relative www file path
- */
-- (NSData*) dataForAsset:(NSString*)path
-{
-    NSFileManager* fileManager = [NSFileManager defaultManager];
-    NSString* absPath;
-
-    NSBundle* mainBundle = [NSBundle mainBundle];
-    NSString* bundlePath = [[mainBundle bundlePath]
-                            stringByAppendingString:@"/"];
-
-    absPath = [path stringByReplacingOccurrencesOfString:@"www:/"
-                                              withString:@"www"];
-
-    absPath = [bundlePath stringByAppendingString:absPath];
-
-    if (![fileManager fileExistsAtPath:absPath]){
-        NSLog(@"Attachment path not found: %@", absPath);
-    }
-
-    NSData* data = [fileManager contentsAtPath:absPath];
-
-    return data;
-}
-
-/**
- * Retrieves the data for a base64 encoded string.
- *
- * @param {NSString} base64String
- *      Base64 encoded string
- */
-- (NSData*) dataFromBase64:(NSString*)base64String
-{
-    int length = [base64String length];
-    NSRegularExpression *regex;
-    NSString *dataString;
-
-    regex = [NSRegularExpression regularExpressionWithPattern:@"^base64:[^/]+.."
-                                                      options:NSRegularExpressionCaseInsensitive
-                                                        error:Nil];
-
-    dataString = [regex stringByReplacingMatchesInString:base64String
-                                                 options:0
-                                                   range:NSMakeRange(0, length)
-                                            withTemplate:@""];
-
-    NSData* data = [NSData dataFromBase64String:dataString];
-
-    return data;
 }
 
 /**

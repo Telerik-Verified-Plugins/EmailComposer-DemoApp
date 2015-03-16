@@ -1,5 +1,5 @@
 /*
- Copyright 2013-2014 appPlant UG
+ Copyright 2013-2015 appPlant UG
 
  Licensed to the Apache Software Foundation (ASF) under one
  or more contributor license agreements.  See the NOTICE file
@@ -27,7 +27,7 @@
 
 // Shows the email composer view with pre-filled data
 - (void) open:(CDVInvokedUrlCommand*)command;
-// Überprüft, ob Emails versendet werden können
-- (void) isServiceAvailable:(CDVInvokedUrlCommand*)command;
+// Checks if the mail composer is able to send mails
+- (void) isAvailable:(CDVInvokedUrlCommand*)command;
 
 @end

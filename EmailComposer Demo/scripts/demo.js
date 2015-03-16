@@ -6,17 +6,17 @@
 
         checkAvailable: function () {
             if (!this.checkSimulator()) {
-            	window.plugin.email.isServiceAvailable(this.callback);
+            	cordova.plugins.email.isAvailable(this.callback);
             }
         },
 
         composeEmail: function () {
             if (!this.checkSimulator()) {
-                window.plugin.email.open({
+                cordova.plugins.email.open({
                     to:          ['person1@domain.com'],
                     cc:          ['person2@domain.com'],
                     bcc:         ['person3@domain.com', 'person4@domain.com'],
-                    attachments: ['www://styles/images/logo.png', 'www://styles/images/logo2x.png'],
+                    attachments: ['file://styles/images/logo.png', 'file://styles/images/logo2x.png'],
                     subject:     'EmailComposer plugin test',
                     body:        '<h2>Hello!</h2>This is a nice <strong>HTML</strong> email with two attachments.',
                     isHtml:      true
@@ -32,7 +32,7 @@
             if (window.navigator.simulator === true) {
                 alert('This plugin is not available in the simulator.');
                 return true;
-            } else if (window.plugin === undefined) {
+            } else if (window.cordova === undefined || window.cordova.plugins === undefined) {
                 alert('Plugin not found. Maybe you are running in AppBuilder Companion app which currently does not support this plugin.');
                 return true;
             } else {
