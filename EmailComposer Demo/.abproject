@@ -13,11 +13,12 @@
   ],
   "CorePlugins": [
     "cordova-plugin-console",
-    "cordova-plugin-crosswalk-webview@1.2.0",
+    "cordova-plugin-crosswalk-webview@1.7.0",
     "cordova-plugin-device",
     "cordova-plugin-dialogs",
     "cordova-plugin-splashscreen",
-    "cordova-plugin-statusbar"
+    "cordova-plugin-statusbar",
+    "de.appplant.cordova.plugin.email-composer@0.8.3"
   ],
   "DeviceOrientations": [
     "Portrait",
@@ -39,5 +40,6 @@
   "WP8WindowsPublisherName": "CN=Telerik",
   "WP8PackageIdentityName": "1234Telerik.com.telerik.plugindemo.emailcomposer",
   "WP8PublisherID": "{f294fe7c-d9de-4498-a5bb-04e0b95c8da0}",
-  "WP8ProductID": "{abb2d97d-e701-48bb-b507-c2f8b61cb619}"
+  "WP8ProductID": "{abb2d97d-e701-48bb-b507-c2f8b61cb619}",
+  "AndroidVersionCode": "1"
 }
